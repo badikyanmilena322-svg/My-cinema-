@@ -1,0 +1,187 @@
+
+<!DOCTYPE html>
+<html lang="hy">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MY CINEMA</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101010;color:#f5f5f5;font-family:Arial,sans-serif}
+header{padding:25px 18px;border-bottom:1px solid #333}
+.logo{font-size:28px;letter-spacing:5px;font-weight:bold}
+.sub{color:#aaa;font-size:11px;letter-spacing:3px;margin-top:8px}
+main{padding:20px;max-width:1000px;margin:auto}
+h2{font-size:19px;font-weight:500}
+input,select,button{font:inherit;border-radius:8px;padding:12px}
+input,select{background:#1d1d1d;color:white;border:1px solid #444;min-width:0}
+.search{width:100%;margin:10px 0 18px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+button{cursor:pointer;border:1px solid #555;background:#222;color:white}
+button.active,button.primary{background:#f5f5f5;color:#111}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}
+.movie{background:#1b1b1b;border:1px solid #303030;border-radius:12px;overflow:hidden}
+.poster{height:180px;background:#292929;display:flex;align-items:center;justify-content:center;color:#aaa;text-align:center;padding:12px}
+.poster img{width:100%;height:100%;object-fit:cover}
+.info{padding:12px}
+.info h3{font-size:15px;margin:0 0 8px;overflow-wrap:anywhere}
+.muted{font-size:12px;color:#aaa}
+.info select{width:100%;margin-top:12px;font-size:12px}
+.remove{margin-top:8px;width:100%;font-size:12px}
+.addform{display:grid;gap:10px;margin:14px 0 24px}
+.empty{color:#aaa;padding:24px 0}
+footer{text-align:center;color:#777;padding:28px;font-size:11px}
+@media(min-width:650px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.poster{height:240px}}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">MY CINEMA</div>
+<div class="sub">MY PERSONAL FILM LIBRARY</div>
+</header>
+<main>
+<h2>Իմ կինոգրադարանը</h2>
+<p class="muted">Բոլոր պատմությունները՝ մեկ տեղում։</p>
+
+<input id="search" class="search" placeholder="Որոնել ֆիլմ կամ սերիալ...">
+
+<div class="tabs">
+<button class="active" data-filter="all">Բոլորը</button>
+<button data-filter="watched">Դիտած</button>
+<button data-filter="watching">Դիտում եմ</button>
+<button data-filter="planned">Դիտելու եմ</button>
+</div>
+
+<h2>Ավելացնել նոր գրառում +</h2>
+<form id="addForm" class="addform">
+<input id="name" placeholder="Ֆիլմի կամ սերիալի անունը" required>
+<select id="type">
+<option>Ֆիլմ</option>
+<option>Սերիալ</option>
+</select>
+<input id="year" placeholder="Տարեթիվ">
+<input id="genre" placeholder="Ժանր">
+<input id="poster" type="url" placeholder="Պաստառի նկարի հղում">
+<select id="status">
+<option value="planned">Դիտելու եմ</option>
+<option value="watched">Դիտած</option>
+<option value="watching">Դիտում եմ</option>
+</select>
+<button class="primary" type="submit">+ Ավելացնել</button>
+</form>
+
+<h2 id="count">Իմ ցանկը</h2>
+<div id="grid" class="grid"></div>
+</main>
+<footer>MY CINEMA · YOUR STORIES · YOUR COLLECTION</footer>
+
+<script>
+const KEY="my-cinema-v1";
+let items=[];
+try{items=JSON.parse(localStorage.getItem(KEY)||"[]")}
+catch{items=[]}
+let filter="all";
+const $=id=>document.getElementById(id);
+const labels={watched:"Դիտած",watching:"Դիտում եմ",planned:"Դիտելու եմ"};
+
+function save(){
+try{
+localStorage.setItem(KEY,JSON.stringify(items));
+return true;
+}catch{
+alert("Չհաջողվեց պահպանել տվյալները։");
+return false;
+}
+}
+
+function render(){
+const q=$("search").value.toLowerCase().trim();
+const list=items.filter(m=>
+(filter==="all"||m.status===filter)&&
+(m.name+" "+m.genre+" "+m.year).toLowerCase().includes(q)
+);
+$("count").textContent="Գրառումներ՝ "+list.length;
+$("grid").innerHTML="";
+if(!list.length){
+$("grid").innerHTML='<p class="empty">Դեռ գրառում չկա։ Ավելացրու առաջինը։</p>';
+return;
+}
+list.forEach(m=>{
+const card=document.createElement("article");
+card.className="movie";
+const poster=document.createElement("div");
+poster.className="poster";
+if(m.poster){
+const img=document.createElement("img");
+img.src=m.poster;
+img.alt=m.name+" պաստառ";
+img.onerror=()=>{poster.textContent="MY CINEMA"};
+poster.appendChild(img);
+}else{poster.textContent="MY CINEMA"}
+
+const info=document.createElement("div");
+info.className="info";
+const title=document.createElement("h3");
+title.textContent=m.name;
+const details=document.createElement("div");
+details.className="muted";
+details.textContent=[m.type,m.year,m.genre].filter(Boolean).join(" · ");
+
+const select=document.createElement("select");
+Object.entries(labels).forEach(([value,label])=>{
+const option=document.createElement("option");
+option.value=value;
+option.textContent=label;
+option.selected=m.status===value;
+select.appendChild(option);
+});
+select.onchange=()=>{
+m.status=select.value;
+if(save())render();
+};
+
+const del=document.createElement("button");
+del.className="remove";
+del.textContent="Ջնջել գրառումը";
+del.onclick=()=>{
+if(confirm("Ջնջե՞լ այս գրառումը։")){
+items=items.filter(x=>x.id!==m.id);
+if(save())render();
+}
+};
+info.append(title,details,select,del);
+card.append(poster,info);
+$("grid").appendChild(card);
+});
+}
+
+$("addForm").onsubmit=e=>{
+e.preventDefault();
+items.unshift({
+id:Date.now().toString()+Math.random().toString(36).slice(2),
+name:$("name").value.trim(),
+type:$("type").value,
+year:$("year").value.trim(),
+genre:$("genre").value.trim(),
+poster:$("poster").value.trim(),
+status:$("status").value
+});
+if(save()){
+e.target.reset();
+render();
+}
+};
+$("search").addEventListener("input",render);
+document.querySelectorAll("[data-filter]").forEach(btn=>{
+btn.onclick=()=>{
+filter=btn.dataset.filter;
+document.querySelectorAll("[data-filter]").forEach(b=>
+b.classList.toggle("active",b===btn)
+);
+render();
+};
+});
+render();
+</script>
+</body>
+</html>
